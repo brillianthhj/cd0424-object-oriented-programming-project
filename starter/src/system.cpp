@@ -22,33 +22,39 @@ system."
 You need to properly format the uptime. Refer to the comments mentioned in
 format. cpp for formatting the uptime.*/
 
+System::System() {
+  kernel_ = LinuxParser::Kernel();
+  os_ = LinuxParser::OperatingSystem();
+}
 // TODO: Return the system's CPU
 Processor& System::Cpu() { return cpu_; }
 
 // TODO: Return a container composed of the system's processes
 vector<Process>& System::Processes() {
+  processes_.clear();
   std::vector pids = LinuxParser::Pids();
   for (const auto pid : pids) {
-    float cpu = LinuxParser::CpuUtilization(pid);
-    long int time = LinuxParser::UpTime(pid);
     string user = LinuxParser::User(pid);
-    string ram = LinuxParser::Ram(pid);
     string command = LinuxParser::Command(pid);
+    float cpu = LinuxParser::CpuUtilization(pid);
+    string ram = LinuxParser::Ram(pid);
+    long int time = LinuxParser::UpTime(pid);
 
-    Process proc(pid, user, cpu, ram, time, command);
+    Process proc(pid, user, command, cpu, ram, time);
     processes_.push_back(proc);
   }
+  std::sort(processes_.begin(), processes_.end());
   return processes_;
 }
 
 // TODO: Return the system's kernel identifier (string)
-std::string System::Kernel() { return LinuxParser::Kernel(); }
+std::string System::Kernel() { return kernel_; }
 
 // TODO: Return the system's memory utilization
 float System::MemoryUtilization() { return LinuxParser::MemoryUtilization(); }
 
 // TODO: Return the operating system name
-std::string System::OperatingSystem() { return LinuxParser::OperatingSystem(); }
+std::string System::OperatingSystem() { return os_; }
 
 // TODO: Return the number of processes actively running on the system
 int System::RunningProcesses() { return LinuxParser::RunningProcesses(); }

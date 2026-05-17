@@ -189,10 +189,8 @@ string LinuxParser::Ram(int pid) {
       string key, value;
       while (linestream >> key >> value) {
         if (key == "VmSize") {
-          float mbSize = stof(value) * 0.001;
-          std::ostringstream oss;
-          oss << std::fixed << std::setprecision(0) << mbSize;
-          return oss.str();
+          int mbSize = stoi(value) / 1024;
+          return to_string(mbSize);
         }
       }
     }
@@ -278,10 +276,12 @@ float LinuxParser::CpuUtilization(int pid) {
     long stime = stol(contents[14]);
     long cutime = stol(contents[15]);
     long cstime = stol(contents[16]);
+    long starttime = stol(contents[21]);
 
     long totaltime = (utime + stime + cutime + cstime) / clockTic;
-    long seconds = UpTime(pid);
-    return static_cast<float>(totaltime * 1.f / seconds);
+    long uptime = UpTime();
+    long seconds = uptime - (starttime / clockTic);
+    if (seconds > 0) return static_cast<float>(totaltime) / seconds;
   }
 
   return 0.f;
