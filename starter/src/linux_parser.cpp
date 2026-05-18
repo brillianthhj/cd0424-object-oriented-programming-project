@@ -3,7 +3,6 @@
 #include <dirent.h>
 #include <unistd.h>
 
-#include <iomanip>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -131,7 +130,29 @@ long LinuxParser::ActiveJiffies() { return 0; }
 long LinuxParser::IdleJiffies() { return 0; }
 
 // TODO: Read and return CPU utilization
-vector<string> LinuxParser::CpuUtilization() { return {}; }
+vector<long> LinuxParser::CpuUtilization() {
+  string cpu, user, nice, system, idle, iowait, irq, softirq, steal, guest,
+      guest_nice;
+  string line;
+  std::ifstream stream(LinuxParser::kProcDirectory +
+                       LinuxParser::kStatFilename);
+  if (stream.is_open()) {
+    std::getline(stream, line);
+    std::istringstream linestream(line);
+    linestream >> cpu >> user >> nice >> system >> idle >> iowait >> irq >>
+        softirq >> steal >> guest >> guest_nice;
+
+    long active = stol(user) + stol(nice) + stol(system) + stol(irq) +
+                  stol(softirq) + stol(steal);
+    long totalIdle = stol(idle) + stol(iowait);
+    long total = active + totalIdle;
+
+    vector<long> contents = {totalIdle, total};
+    return contents;
+  }
+
+  return {};
+}
 
 // TODO: Read and return the total number of processes
 int LinuxParser::TotalProcesses() {
@@ -157,9 +178,8 @@ int LinuxParser::RunningProcesses() {
     while (std::getline(stream, line)) {
       std::istringstream linestream(line);
       string key, value;
-      while (linestream >> key >> value) {
-        if (key == "procs_running") return stoi(value);
-      }
+      linestream >> key >> value;
+      if (key == "procs_running") return stoi(value);
     }
   }
   return 0;
@@ -187,11 +207,10 @@ string LinuxParser::Ram(int pid) {
       std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream linestream(line);
       string key, value;
-      while (linestream >> key >> value) {
-        if (key == "VmSize") {
-          int mbSize = stoi(value) / 1024;
-          return to_string(mbSize);
-        }
+      linestream >> key >> value;
+      if (key == "VmSize") {
+        int mbSize = stoi(value) / 1024;
+        return to_string(mbSize);
       }
     }
   }
@@ -259,6 +278,7 @@ long LinuxParser::UpTime(int pid) {
   return 0;
 }
 
+// TODO: Calculate more current measurement of process utilization
 float LinuxParser::CpuUtilization(int pid) {
   long clockTic = sysconf(_SC_CLK_TCK);
   int startTimeOrder = 22;
@@ -276,11 +296,12 @@ float LinuxParser::CpuUtilization(int pid) {
     long stime = stol(contents[14]);
     long cutime = stol(contents[15]);
     long cstime = stol(contents[16]);
-    long starttime = stol(contents[21]);
-
     long totaltime = (utime + stime + cutime + cstime) / clockTic;
+
+    long starttime = stol(contents[startTimeOrder - 1]);
     long uptime = UpTime();
     long seconds = uptime - (starttime / clockTic);
+
     if (seconds > 0) return static_cast<float>(totaltime) / seconds;
   }
 
