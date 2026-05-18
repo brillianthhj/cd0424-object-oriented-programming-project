@@ -3,7 +3,6 @@
 
 #include <curses.h>
 
-#include "process.h"
 #include "system.h"
 
 namespace NCursesDisplay {
